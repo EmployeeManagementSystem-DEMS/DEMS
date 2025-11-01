@@ -3092,8 +3092,8 @@ class LeaveDialog:
         year_frame.pack(pady=5, padx=20, fill="x")
         
         ctk.CTkLabel(year_frame, text="Year:", width=50).pack(side="left")
-        year_var = ctk.IntVar(value=current_date.year)
-        year_entry = ctk.CTkEntry(year_frame, textvariable=year_var, width=100)
+        year_entry = ctk.CTkEntry(year_frame, width=100)
+        year_entry.insert(0, str(current_date.year))
         year_entry.pack(side="left", padx=10)
         
         # Month selection
@@ -3112,8 +3112,8 @@ class LeaveDialog:
         day_frame.pack(pady=5, padx=20, fill="x")
         
         ctk.CTkLabel(day_frame, text="Day:", width=50).pack(side="left")
-        day_var = ctk.IntVar(value=current_date.day)
-        day_entry = ctk.CTkEntry(day_frame, textvariable=day_var, width=100)
+        day_entry = ctk.CTkEntry(day_frame, width=100)
+        day_entry.insert(0, str(current_date.day))
         day_entry.pack(side="left", padx=10)
         
         # Buttons
@@ -3122,9 +3122,9 @@ class LeaveDialog:
         
         def set_date():
             try:
-                year = year_var.get()
+                year = int(year_entry.get())
                 month = months.index(month_combo.get()) + 1
-                day = day_var.get()
+                day = int(day_entry.get())
                 
                 # Validate date
                 selected_date = datetime(year, month, day)
