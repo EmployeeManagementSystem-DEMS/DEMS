@@ -948,42 +948,410 @@ class MainWindow:
     def show_salaries(self):
         self.clear_content()
         
-        # Title
+        # Header with title
         header_frame = ctk.CTkFrame(self.content_frame)
         header_frame.pack(pady=(20, 10), padx=20, fill="x")
         
         ctk.CTkLabel(
             header_frame,
-            text="💰 Salary Management (Derived Fragmentation)",
-            font=ctk.CTkFont(size=20, weight="bold")
-        ).pack(side="left", pady=15)
+            text="💰 Add New Salary",
+            font=ctk.CTkFont(size=24, weight="bold")
+        ).pack(side="left", pady=15, padx=15)
         
-        if self.user['role'] == 'admin':
-            add_btn = ctk.CTkButton(
-                header_frame,
-                text="➕ Add Salary Record",
-                command=self.show_add_salary_dialog,
-                height=35,
-                font=ctk.CTkFont(size=12)
-            )
-            add_btn.pack(side="right", pady=15, padx=15)
+        # Main form container
+        form_container = ctk.CTkFrame(self.content_frame)
+        form_container.pack(pady=20, padx=40, fill="both", expand=True)
         
-        # Content message
-        content_frame = ctk.CTkFrame(self.content_frame)
-        content_frame.pack(pady=20, padx=20, fill="both", expand=True)
+        # Create scrollable frame for the form
+        scrollable_form = ctk.CTkScrollableFrame(form_container)
+        scrollable_form.pack(fill="both", expand=True, padx=20, pady=20)
         
+        # Form title
         ctk.CTkLabel(
-            content_frame,
-            text="📊 Salary Management System",
+            scrollable_form,
+            text="📋 Salary Information Form",
             font=ctk.CTkFont(size=18, weight="bold")
-        ).pack(pady=(50, 20))
+        ).pack(pady=(10, 30))
+        
+        # Department selection
+        dept_frame = ctk.CTkFrame(scrollable_form, fg_color="transparent")
+        dept_frame.pack(fill="x", padx=40, pady=10)
         
         ctk.CTkLabel(
-            content_frame,
-            text="Manage employee salary records efficiently",
-            font=ctk.CTkFont(size=14),
-            text_color="gray"
-        ).pack(pady=20)
+            dept_frame,
+            text="Department:",
+            font=ctk.CTkFont(size=14, weight="bold"),
+            width=150,
+            anchor="w"
+        ).pack(side="left", padx=(0, 20))
+        
+        departments = self.db_service.get_all_departments()
+        dept_names = [dept['name'] for dept in departments] if departments else ["IT", "HR", "Finance"]
+        self.salary_dept_combo = ctk.CTkComboBox(
+            dept_frame,
+            values=dept_names,
+            height=40,
+            width=350,
+            font=ctk.CTkFont(size=12),
+            command=self.on_department_change
+        )
+        self.salary_dept_combo.pack(side="left", fill="x", expand=True)
+        if dept_names:
+            self.salary_dept_combo.set(dept_names[0])
+        
+        # Employee selection
+        emp_frame = ctk.CTkFrame(scrollable_form, fg_color="transparent")
+        emp_frame.pack(fill="x", padx=40, pady=10)
+        
+        ctk.CTkLabel(
+            emp_frame,
+            text="Employee:",
+            font=ctk.CTkFont(size=14, weight="bold"),
+            width=150,
+            anchor="w"
+        ).pack(side="left", padx=(0, 20))
+        
+        self.salary_emp_combo = ctk.CTkComboBox(
+            emp_frame,
+            values=["Select Department First"],
+            height=40,
+            width=350,
+            font=ctk.CTkFont(size=12)
+        )
+        self.salary_emp_combo.pack(side="left", fill="x", expand=True)
+        
+        # Load initial employees
+        if dept_names:
+            self.load_employees_by_department(dept_names[0])
+        
+        # Basic Salary
+        basic_frame = ctk.CTkFrame(scrollable_form, fg_color="transparent")
+        basic_frame.pack(fill="x", padx=40, pady=10)
+        
+        ctk.CTkLabel(
+            basic_frame,
+            text="Basic Salary:",
+            font=ctk.CTkFont(size=14, weight="bold"),
+            width=150,
+            anchor="w"
+        ).pack(side="left", padx=(0, 20))
+        
+        self.salary_basic_entry = ctk.CTkEntry(
+            basic_frame,
+            placeholder_text="Enter basic salary amount",
+            height=40,
+            width=350,
+            font=ctk.CTkFont(size=12)
+        )
+        self.salary_basic_entry.pack(side="left", fill="x", expand=True)
+        
+        # Allowances
+        allowance_frame = ctk.CTkFrame(scrollable_form, fg_color="transparent")
+        allowance_frame.pack(fill="x", padx=40, pady=10)
+        
+        ctk.CTkLabel(
+            allowance_frame,
+            text="Allowances:",
+            font=ctk.CTkFont(size=14, weight="bold"),
+            width=150,
+            anchor="w"
+        ).pack(side="left", padx=(0, 20))
+        
+        self.salary_allowance_entry = ctk.CTkEntry(
+            allowance_frame,
+            placeholder_text="Enter allowances (bonuses, benefits, etc.)",
+            height=40,
+            width=350,
+            font=ctk.CTkFont(size=12)
+        )
+        self.salary_allowance_entry.pack(side="left", fill="x", expand=True)
+        self.salary_allowance_entry.insert(0, "0")
+        
+        # Deductions
+        deduction_frame = ctk.CTkFrame(scrollable_form, fg_color="transparent")
+        deduction_frame.pack(fill="x", padx=40, pady=10)
+        
+        ctk.CTkLabel(
+            deduction_frame,
+            text="Deductions:",
+            font=ctk.CTkFont(size=14, weight="bold"),
+            width=150,
+            anchor="w"
+        ).pack(side="left", padx=(0, 20))
+        
+        self.salary_deduction_entry = ctk.CTkEntry(
+            deduction_frame,
+            placeholder_text="Enter deductions (tax, insurance, etc.)",
+            height=40,
+            width=350,
+            font=ctk.CTkFont(size=12)
+        )
+        self.salary_deduction_entry.pack(side="left", fill="x", expand=True)
+        self.salary_deduction_entry.insert(0, "0")
+        
+        # Pay Date
+        date_frame = ctk.CTkFrame(scrollable_form, fg_color="transparent")
+        date_frame.pack(fill="x", padx=40, pady=10)
+        
+        ctk.CTkLabel(
+            date_frame,
+            text="Pay Date:",
+            font=ctk.CTkFont(size=14, weight="bold"),
+            width=150,
+            anchor="w"
+        ).pack(side="left", padx=(0, 20))
+        
+        date_input_frame = ctk.CTkFrame(date_frame)
+        date_input_frame.pack(side="left", fill="x", expand=True)
+        
+        self.salary_date_entry = ctk.CTkEntry(
+            date_input_frame,
+            placeholder_text="YYYY-MM-DD",
+            height=40,
+            width=250,
+            font=ctk.CTkFont(size=12)
+        )
+        self.salary_date_entry.pack(side="left", padx=(0, 10))
+        
+        # Set default date to today
+        from datetime import datetime
+        today = datetime.now().strftime("%Y-%m-%d")
+        self.salary_date_entry.insert(0, today)
+        
+        # Calendar button
+        calendar_btn = ctk.CTkButton(
+            date_input_frame,
+            text="📅 Calendar",
+            command=self.show_date_picker,
+            height=40,
+            width=100,
+            font=ctk.CTkFont(size=12)
+        )
+        calendar_btn.pack(side="left")
+        
+        # Net Salary Display (calculated automatically)
+        net_frame = ctk.CTkFrame(scrollable_form, fg_color="transparent")
+        net_frame.pack(fill="x", padx=40, pady=20)
+        
+        ctk.CTkLabel(
+            net_frame,
+            text="Net Salary:",
+            font=ctk.CTkFont(size=14, weight="bold"),
+            width=150,
+            anchor="w"
+        ).pack(side="left", padx=(0, 20))
+        
+        self.net_salary_label = ctk.CTkLabel(
+            net_frame,
+            text="$0.00",
+            font=ctk.CTkFont(size=16, weight="bold"),
+            text_color="#10b981",
+            anchor="w"
+        )
+        self.net_salary_label.pack(side="left", fill="x", expand=True)
+        
+        # Bind calculation to entry changes
+        self.salary_basic_entry.bind('<KeyRelease>', lambda e: self.calculate_net_salary())
+        self.salary_allowance_entry.bind('<KeyRelease>', lambda e: self.calculate_net_salary())
+        self.salary_deduction_entry.bind('<KeyRelease>', lambda e: self.calculate_net_salary())
+        
+        # Add Salary button
+        button_frame = ctk.CTkFrame(scrollable_form, fg_color="transparent")
+        button_frame.pack(fill="x", padx=40, pady=(30, 20))
+        
+        add_salary_btn = ctk.CTkButton(
+            button_frame,
+            text="💰 Add Salary",
+            command=self.add_salary_record,
+            height=50,
+            font=ctk.CTkFont(size=16, weight="bold"),
+            fg_color="green",
+            hover_color="darkgreen"
+        )
+        add_salary_btn.pack(fill="x")
+    
+    def on_department_change(self, department):
+        """Load employees when department changes"""
+        self.load_employees_by_department(department)
+    
+    def load_employees_by_department(self, department):
+        """Load employees for selected department"""
+        all_employees = self.db_service.get_all_employees()
+        dept_employees = [emp for emp in all_employees if emp['department'] == department]
+        
+        if dept_employees:
+            emp_options = [f"{emp['emp_id']} - {emp['name']}" for emp in dept_employees]
+            self.salary_emp_combo.configure(values=emp_options)
+            self.salary_emp_combo.set(emp_options[0])
+        else:
+            self.salary_emp_combo.configure(values=["No employees in this department"])
+            self.salary_emp_combo.set("No employees in this department")
+    
+    def calculate_net_salary(self):
+        """Calculate and display net salary"""
+        try:
+            basic = float(self.salary_basic_entry.get() or 0)
+            allowances = float(self.salary_allowance_entry.get() or 0)
+            deductions = float(self.salary_deduction_entry.get() or 0)
+            
+            net = basic + allowances - deductions
+            self.net_salary_label.configure(text=f"${net:,.2f}")
+        except ValueError:
+            self.net_salary_label.configure(text="Invalid input")
+    
+    def show_date_picker(self):
+        """Show a simple date picker dialog"""
+        from datetime import datetime
+        import calendar
+        
+        # Create date picker dialog
+        dialog = ctk.CTkToplevel(self.root)
+        dialog.title("Select Date")
+        dialog.geometry("300x350")
+        dialog.transient(self.root)
+        dialog.grab_set()
+        
+        # Center dialog
+        dialog.update_idletasks()
+        x = (dialog.winfo_screenwidth() // 2) - (300 // 2)
+        y = (dialog.winfo_screenheight() // 2) - (350 // 2)
+        dialog.geometry(f"300x350+{x}+{y}")
+        
+        # Current date
+        today = datetime.now()
+        selected_date = {"year": today.year, "month": today.month, "day": today.day}
+        
+        # Title
+        ctk.CTkLabel(
+            dialog,
+            text="Select Pay Date",
+            font=ctk.CTkFont(size=16, weight="bold")
+        ).pack(pady=10)
+        
+        # Year selection
+        year_frame = ctk.CTkFrame(dialog)
+        year_frame.pack(pady=5, padx=20, fill="x")
+        
+        ctk.CTkLabel(year_frame, text="Year:", width=50).pack(side="left")
+        year_var = ctk.IntVar(value=today.year)
+        year_entry = ctk.CTkEntry(year_frame, textvariable=year_var, width=100)
+        year_entry.pack(side="left", padx=10)
+        
+        # Month selection
+        month_frame = ctk.CTkFrame(dialog)
+        month_frame.pack(pady=5, padx=20, fill="x")
+        
+        ctk.CTkLabel(month_frame, text="Month:", width=50).pack(side="left")
+        months = ["January", "February", "March", "April", "May", "June",
+                 "July", "August", "September", "October", "November", "December"]
+        month_combo = ctk.CTkComboBox(month_frame, values=months, width=150)
+        month_combo.set(months[today.month - 1])
+        month_combo.pack(side="left", padx=10)
+        
+        # Day selection
+        day_frame = ctk.CTkFrame(dialog)
+        day_frame.pack(pady=5, padx=20, fill="x")
+        
+        ctk.CTkLabel(day_frame, text="Day:", width=50).pack(side="left")
+        day_var = ctk.IntVar(value=today.day)
+        day_entry = ctk.CTkEntry(day_frame, textvariable=day_var, width=100)
+        day_entry.pack(side="left", padx=10)
+        
+        # Buttons
+        btn_frame = ctk.CTkFrame(dialog)
+        btn_frame.pack(pady=20, padx=20, fill="x")
+        
+        def set_date():
+            try:
+                year = year_var.get()
+                month = months.index(month_combo.get()) + 1
+                day = day_var.get()
+                date_str = f"{year:04d}-{month:02d}-{day:02d}"
+                self.salary_date_entry.delete(0, 'end')
+                self.salary_date_entry.insert(0, date_str)
+                dialog.destroy()
+            except Exception as e:
+                messagebox.showerror("Invalid Date", "Please enter a valid date")
+        
+        ctk.CTkButton(
+            btn_frame,
+            text="✓ Select",
+            command=set_date,
+            height=40,
+            fg_color="green",
+            hover_color="darkgreen"
+        ).pack(side="left", fill="x", expand=True, padx=(0, 5))
+        
+        ctk.CTkButton(
+            btn_frame,
+            text="Cancel",
+            command=dialog.destroy,
+            height=40,
+            fg_color="gray",
+            hover_color="darkgray"
+        ).pack(side="right", fill="x", expand=True, padx=(5, 0))
+    
+    def add_salary_record(self):
+        """Add salary record to database"""
+        # Validate inputs
+        dept = self.salary_dept_combo.get()
+        emp_selection = self.salary_emp_combo.get()
+        
+        if "Select Department First" in emp_selection or "No employees" in emp_selection:
+            messagebox.showerror("Error", "Please select a valid employee")
+            return
+        
+        # Extract employee ID from selection
+        try:
+            emp_id = int(emp_selection.split(" - ")[0])
+        except:
+            messagebox.showerror("Error", "Invalid employee selection")
+            return
+        
+        basic_salary = self.salary_basic_entry.get().strip()
+        allowances = self.salary_allowance_entry.get().strip() or "0"
+        deductions = self.salary_deduction_entry.get().strip() or "0"
+        pay_date = self.salary_date_entry.get().strip()
+        
+        if not all([basic_salary, pay_date]):
+            messagebox.showerror("Error", "Please fill all required fields")
+            return
+        
+        # Validate date format
+        try:
+            from datetime import datetime
+            datetime.strptime(pay_date, '%Y-%m-%d')
+        except ValueError:
+            messagebox.showerror("Error", "Invalid date format. Please use YYYY-MM-DD")
+            return
+        
+        # Validate numeric values
+        try:
+            basic = float(basic_salary)
+            bonus = float(allowances)
+            deduct = float(deductions)
+            
+            if basic < 0 or bonus < 0 or deduct < 0:
+                messagebox.showerror("Error", "Values cannot be negative")
+                return
+        except ValueError:
+            messagebox.showerror("Error", "Please enter valid numeric values")
+            return
+        
+        # Add salary record
+        if self.db_service.add_salary_record_with_date(emp_id, pay_date, basic, bonus, deduct):
+            net = basic + bonus - deduct
+            messagebox.showinfo("Success", f"Salary record added successfully!\n\nEmployee ID: {emp_id}\nNet Salary: ${net:,.2f}")
+            
+            # Clear form
+            self.salary_basic_entry.delete(0, 'end')
+            self.salary_allowance_entry.delete(0, 'end')
+            self.salary_allowance_entry.insert(0, "0")
+            self.salary_deduction_entry.delete(0, 'end')
+            self.salary_deduction_entry.insert(0, "0")
+            self.net_salary_label.configure(text="$0.00")
+        else:
+            messagebox.showerror("Error", "Failed to add salary record")
     
     def show_add_salary_dialog(self):
         dialog = SalaryDialog(self.root, self.db_service)

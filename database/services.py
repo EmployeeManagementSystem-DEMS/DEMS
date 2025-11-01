@@ -314,6 +314,36 @@ class DatabaseService:
             print(f"Error adding salary record: {e}")
             return False
     
+    def add_salary_record_with_date(self, emp_id, pay_date, base_salary, allowances=0, deductions=0):
+        """Add salary record with specific pay date in same database as employee"""
+        try:
+            db = self.db_manager.get_database_for_employee(emp_id)
+            
+            # Parse date
+            if isinstance(pay_date, str):
+                pay_date_obj = datetime.strptime(pay_date, '%Y-%m-%d')
+            else:
+                pay_date_obj = pay_date
+            
+            net_salary = float(base_salary) + float(allowances) - float(deductions)
+            
+            salary_data = {
+                "emp_id": int(emp_id),
+                "pay_date": pay_date_obj,
+                "month": pay_date_obj.strftime("%B"),
+                "year": pay_date_obj.year,
+                "base_salary": float(base_salary),
+                "allowances": float(allowances),
+                "deductions": float(deductions),
+                "net_salary": net_salary,
+                "created_at": datetime.now()
+            }
+            db[DatabaseConfig.SALARIES_COLLECTION].insert_one(salary_data)
+            return True
+        except Exception as e:
+            print(f"Error adding salary record: {e}")
+            return False
+    
     def get_employee_salaries(self, emp_id):
         """Get salary records for specific employee"""
         try:
