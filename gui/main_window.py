@@ -2968,14 +2968,36 @@ class LeaveDialog:
         self.leave_type_combo.pack(fill="x", padx=20, pady=(5, 10))
         
         # Start date
-        ctk.CTkLabel(main_frame, text="Start Date (YYYY-MM-DD)", font=ctk.CTkFont(size=12)).pack(anchor="w", padx=20)
-        self.start_date_entry = ctk.CTkEntry(main_frame, height=35, placeholder_text="2024-01-15")
-        self.start_date_entry.pack(fill="x", padx=20, pady=(5, 10))
+        ctk.CTkLabel(main_frame, text="Start Date", font=ctk.CTkFont(size=12)).pack(anchor="w", padx=20)
+        start_date_frame = ctk.CTkFrame(main_frame)
+        start_date_frame.pack(fill="x", padx=20, pady=(5, 10))
+        
+        self.start_date_entry = ctk.CTkEntry(start_date_frame, height=35, placeholder_text="YYYY-MM-DD")
+        self.start_date_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
+        
+        ctk.CTkButton(
+            start_date_frame,
+            text="📅 Calendar",
+            command=lambda: self.show_date_picker("start"),
+            height=35,
+            width=100
+        ).pack(side="right")
         
         # End date
-        ctk.CTkLabel(main_frame, text="End Date (YYYY-MM-DD)", font=ctk.CTkFont(size=12)).pack(anchor="w", padx=20)
-        self.end_date_entry = ctk.CTkEntry(main_frame, height=35, placeholder_text="2024-01-20")
-        self.end_date_entry.pack(fill="x", padx=20, pady=(5, 10))
+        ctk.CTkLabel(main_frame, text="End Date", font=ctk.CTkFont(size=12)).pack(anchor="w", padx=20)
+        end_date_frame = ctk.CTkFrame(main_frame)
+        end_date_frame.pack(fill="x", padx=20, pady=(5, 10))
+        
+        self.end_date_entry = ctk.CTkEntry(end_date_frame, height=35, placeholder_text="YYYY-MM-DD")
+        self.end_date_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
+        
+        ctk.CTkButton(
+            end_date_frame,
+            text="📅 Calendar",
+            command=lambda: self.show_date_picker("end"),
+            height=35,
+            width=100
+        ).pack(side="right")
         
         # Reason
         ctk.CTkLabel(main_frame, text="Reason", font=ctk.CTkFont(size=12)).pack(anchor="w", padx=20)
@@ -3027,6 +3049,116 @@ class LeaveDialog:
             
         #     ustify="center"
         # ).pack(pady=10)
+    
+    def show_date_picker(self, date_type):
+        """Show calendar picker for start or end date"""
+        from datetime import datetime
+        
+        # Create calendar dialog
+        cal_dialog = ctk.CTkToplevel(self.dialog)
+        cal_dialog.title(f"Select {'Start' if date_type == 'start' else 'End'} Date")
+        cal_dialog.geometry("300x350")
+        cal_dialog.transient(self.dialog)
+        cal_dialog.grab_set()
+        
+        # Center dialog
+        cal_dialog.update_idletasks()
+        x = (cal_dialog.winfo_screenwidth() // 2) - (300 // 2)
+        y = (cal_dialog.winfo_screenheight() // 2) - (350 // 2)
+        cal_dialog.geometry(f"300x350+{x}+{y}")
+        
+        # Get current date or existing date from entry
+        current_date = datetime.now()
+        if date_type == "start" and self.start_date_entry.get():
+            try:
+                current_date = datetime.strptime(self.start_date_entry.get(), '%Y-%m-%d')
+            except:
+                pass
+        elif date_type == "end" and self.end_date_entry.get():
+            try:
+                current_date = datetime.strptime(self.end_date_entry.get(), '%Y-%m-%d')
+            except:
+                pass
+        
+        # Title
+        ctk.CTkLabel(
+            cal_dialog,
+            text=f"Select {'Start' if date_type == 'start' else 'End'} Date",
+            font=ctk.CTkFont(size=16, weight="bold")
+        ).pack(pady=10)
+        
+        # Year selection
+        year_frame = ctk.CTkFrame(cal_dialog)
+        year_frame.pack(pady=5, padx=20, fill="x")
+        
+        ctk.CTkLabel(year_frame, text="Year:", width=50).pack(side="left")
+        year_var = ctk.IntVar(value=current_date.year)
+        year_entry = ctk.CTkEntry(year_frame, textvariable=year_var, width=100)
+        year_entry.pack(side="left", padx=10)
+        
+        # Month selection
+        month_frame = ctk.CTkFrame(cal_dialog)
+        month_frame.pack(pady=5, padx=20, fill="x")
+        
+        ctk.CTkLabel(month_frame, text="Month:", width=50).pack(side="left")
+        months = ["January", "February", "March", "April", "May", "June",
+                 "July", "August", "September", "October", "November", "December"]
+        month_combo = ctk.CTkComboBox(month_frame, values=months, width=150)
+        month_combo.set(months[current_date.month - 1])
+        month_combo.pack(side="left", padx=10)
+        
+        # Day selection
+        day_frame = ctk.CTkFrame(cal_dialog)
+        day_frame.pack(pady=5, padx=20, fill="x")
+        
+        ctk.CTkLabel(day_frame, text="Day:", width=50).pack(side="left")
+        day_var = ctk.IntVar(value=current_date.day)
+        day_entry = ctk.CTkEntry(day_frame, textvariable=day_var, width=100)
+        day_entry.pack(side="left", padx=10)
+        
+        # Buttons
+        btn_frame = ctk.CTkFrame(cal_dialog)
+        btn_frame.pack(pady=20, padx=20, fill="x")
+        
+        def set_date():
+            try:
+                year = year_var.get()
+                month = months.index(month_combo.get()) + 1
+                day = day_var.get()
+                
+                # Validate date
+                selected_date = datetime(year, month, day)
+                date_str = selected_date.strftime("%Y-%m-%d")
+                
+                # Set the date in the appropriate entry field
+                if date_type == "start":
+                    self.start_date_entry.delete(0, 'end')
+                    self.start_date_entry.insert(0, date_str)
+                else:
+                    self.end_date_entry.delete(0, 'end')
+                    self.end_date_entry.insert(0, date_str)
+                
+                cal_dialog.destroy()
+            except ValueError:
+                messagebox.showerror("Invalid Date", "Please enter a valid date.")
+        
+        ctk.CTkButton(
+            btn_frame,
+            text="✓ Select",
+            command=set_date,
+            height=40,
+            fg_color="green",
+            hover_color="darkgreen"
+        ).pack(side="left", fill="x", expand=True, padx=(0, 5))
+        
+        ctk.CTkButton(
+            btn_frame,
+            text="Cancel",
+            command=cal_dialog.destroy,
+            height=40,
+            fg_color="gray",
+            hover_color="darkgray"
+        ).pack(side="right", fill="x", expand=True, padx=(5, 0))
     
     def apply_leave(self):
         leave_type = self.leave_type_combo.get()
