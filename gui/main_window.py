@@ -507,18 +507,18 @@ class MainWindow:
         tree_frame = tk.Frame(list_frame, bg="#212121")
         tree_frame.pack(fill="both", expand=True, padx=15, pady=15)
         
-        columns = ("S No", "Department", "Action")
+        columns = ("S No", "Department", "Total Members")
         self.department_tree = ttk.Treeview(tree_frame, columns=columns, show="headings", height=15)
         
         # Configure columns
         self.department_tree.heading("S No", text="S No")
         self.department_tree.heading("Department", text="Department")
-        self.department_tree.heading("Action", text="Action")
+        self.department_tree.heading("Total Members", text="Total Members")
         
         # Column widths
         self.department_tree.column("S No", width=80, anchor="center")
         self.department_tree.column("Department", width=400, anchor="w")
-        self.department_tree.column("Action", width=200, anchor="center")
+        self.department_tree.column("Total Members", width=150, anchor="center")
         
         # Scrollbar
         scrollbar = ttk.Scrollbar(tree_frame, orient="vertical", command=self.department_tree.yview)
@@ -568,10 +568,13 @@ class MainWindow:
         
         serial_number = 1
         for dept in departments:
+            # Get total members count for this department
+            total_members = self.db_service.get_department_member_count(dept['name'])
+            
             self.department_tree.insert("", "end", values=(
                 serial_number,
                 dept['name'],
-                "Edit | Delete"
+                total_members
             ), tags=(dept['dept_id'],))
             serial_number += 1
     
@@ -590,10 +593,13 @@ class MainWindow:
         serial_number = 1
         for dept in departments:
             if search_query in dept['name'].lower():
+                # Get total members count for this department
+                total_members = self.db_service.get_department_member_count(dept['name'])
+                
                 self.department_tree.insert("", "end", values=(
                     serial_number,
                     dept['name'],
-                    "Edit | Delete"
+                    total_members
                 ), tags=(dept['dept_id'],))
                 serial_number += 1
     

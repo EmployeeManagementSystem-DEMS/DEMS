@@ -208,6 +208,18 @@ class DatabaseService:
             print(f"Error deleting department: {e}")
             return False
     
+    def get_department_member_count(self, department_name):
+        """Get total number of employees in a department across all databases"""
+        try:
+            total_count = 0
+            for db in self.db_manager.get_all_databases():
+                count = db[DatabaseConfig.EMPLOYEES_COLLECTION].count_documents({"department": department_name})
+                total_count += count
+            return total_count
+        except Exception as e:
+            print(f"Error getting department member count: {e}")
+            return 0
+    
     # Leave Management (Derived Horizontal Fragmentation)
     def apply_leave(self, emp_id, start_date, end_date, leave_type, reason):
         """Apply leave in same database as employee (derived fragmentation)"""
