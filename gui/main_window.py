@@ -787,6 +787,14 @@ class MainWindow:
     def show_leaves(self):
         self.clear_content()
         
+        # Check if user is admin or employee
+        if self.user['role'] == 'admin':
+            self.show_admin_leaves()
+        else:
+            self.show_employee_leaves()
+    
+    def show_admin_leaves(self):
+        """Admin view for managing all leaves"""
         # Initialize filter status if not exists
         if not hasattr(self, 'leave_filter_status'):
             self.leave_filter_status = "All"
@@ -948,7 +956,174 @@ class MainWindow:
     def set_leave_filter(self, status):
         """Set the leave filter status"""
         self.leave_filter_status = status
-        self.refresh_leaves()
+        if self.user['role'] == 'admin':
+            self.refresh_leaves()
+        else:
+            self.refresh_employee_leaves()
+    
+    def show_employee_leaves(self):
+        """Employee view for managing own leaves"""
+        # Initialize filter status if not exists
+        if not hasattr(self, 'employee_leave_filter_status'):
+            self.employee_leave_filter_status = "All"
+        
+        # Header with title and Add button
+        header_frame = ctk.CTkFrame(self.content_frame)
+        header_frame.pack(pady=(20, 10), padx=20, fill="x")
+        
+        ctk.CTkLabel(
+            header_frame,
+            text="🏖️ Manage Leaves",
+            font=ctk.CTkFont(size=24, weight="bold")
+        ).pack(side="left", pady=15, padx=15)
+        
+        # Add Leave button
+        ctk.CTkButton(
+            header_frame,
+            text="➕ Add Leave",
+            command=self.show_apply_leave_dialog,
+            height=40,
+            width=150,
+            font=ctk.CTkFont(size=14, weight="bold"),
+            fg_color="green",
+            hover_color="darkgreen"
+        ).pack(side="right", pady=15, padx=15)
+        
+        # Search and Filter frame
+        search_filter_frame = ctk.CTkFrame(self.content_frame)
+        search_filter_frame.pack(pady=(0, 10), padx=20, fill="x")
+        
+        # Search by Status
+        ctk.CTkLabel(
+            search_filter_frame,
+            text="🔍 Search by Status:",
+            font=ctk.CTkFont(size=12, weight="bold")
+        ).pack(side="left", padx=(15, 10), pady=10)
+        
+        # Status filter dropdown
+        status_options = ["All", "Pending", "Approved", "Rejected"]
+        self.employee_status_combo = ctk.CTkComboBox(
+            search_filter_frame,
+            values=status_options,
+            height=35,
+            width=150,
+            command=self.on_employee_status_change
+        )
+        self.employee_status_combo.set("All")
+        self.employee_status_combo.pack(side="left", padx=(0, 10), pady=10)
+        
+        # Refresh button
+        ctk.CTkButton(
+            search_filter_frame,
+            text="🔄 Refresh",
+            command=self.refresh_employee_leaves,
+            height=35,
+            width=100
+        ).pack(side="right", padx=15, pady=10)
+        
+        # Leave table frame
+        list_frame = ctk.CTkFrame(self.content_frame)
+        list_frame.pack(pady=10, padx=20, fill="both", expand=True)
+        
+        # Create treeview for leaves
+        tree_frame = tk.Frame(list_frame, bg="#212121")
+        tree_frame.pack(fill="both", expand=True, padx=15, pady=15)
+        
+        columns = ("S No", "Leave Type", "From", "To", "Description", "Applied Date", "Status")
+        self.employee_leave_tree = ttk.Treeview(tree_frame, columns=columns, show="headings", height=15)
+        
+        # Configure columns
+        self.employee_leave_tree.heading("S No", text="S No")
+        self.employee_leave_tree.heading("Leave Type", text="Leave Type")
+        self.employee_leave_tree.heading("From", text="From")
+        self.employee_leave_tree.heading("To", text="To")
+        self.employee_leave_tree.heading("Description", text="Description")
+        self.employee_leave_tree.heading("Applied Date", text="Applied Date")
+        self.employee_leave_tree.heading("Status", text="Status")
+        
+        # Column widths
+        self.employee_leave_tree.column("S No", width=50, anchor="center")
+        self.employee_leave_tree.column("Leave Type", width=120, anchor="w")
+        self.employee_leave_tree.column("From", width=100, anchor="center")
+        self.employee_leave_tree.column("To", width=100, anchor="center")
+        self.employee_leave_tree.column("Description", width=250, anchor="w")
+        self.employee_leave_tree.column("Applied Date", width=120, anchor="center")
+        self.employee_leave_tree.column("Status", width=100, anchor="center")
+        
+        # Scrollbar
+        scrollbar = ttk.Scrollbar(tree_frame, orient="vertical", command=self.employee_leave_tree.yview)
+        self.employee_leave_tree.configure(yscrollcommand=scrollbar.set)
+        
+        self.employee_leave_tree.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        
+        # Load leaves
+        self.refresh_employee_leaves()
+    
+    def on_employee_status_change(self, status):
+        """Handle status filter change for employee"""
+        self.employee_leave_filter_status = status
+        self.refresh_employee_leaves()
+    
+    def refresh_employee_leaves(self):
+        """Refresh employee's own leave list"""
+        # Clear existing items
+        for item in self.employee_leave_tree.get_children():
+            self.employee_leave_tree.delete(item)
+        
+        # Get employee ID
+        emp_id = self.user.get('emp_id')
+        if not emp_id:
+            return
+        
+        # Load employee's leaves
+        leaves = self.db_service.get_employee_leaves(emp_id)
+        
+        # Apply status filter
+        if hasattr(self, 'employee_leave_filter_status') and self.employee_leave_filter_status != "All":
+            leaves = [l for l in leaves if l['status'] == self.employee_leave_filter_status]
+        
+        # Sort by applied date (most recent first)
+        leaves = sorted(leaves, key=lambda x: x.get('applied_date', datetime.now()), reverse=True)
+        
+        serial_number = 1
+        for leave in leaves:
+            # Format dates
+            from_date = leave['start_date']
+            to_date = leave['end_date']
+            applied_date = leave.get('applied_date', 'N/A')
+            
+            if isinstance(from_date, str):
+                from_date_str = from_date
+            elif hasattr(from_date, 'strftime'):
+                from_date_str = from_date.strftime('%Y-%m-%d')
+            else:
+                from_date_str = str(from_date)
+            
+            if isinstance(to_date, str):
+                to_date_str = to_date
+            elif hasattr(to_date, 'strftime'):
+                to_date_str = to_date.strftime('%Y-%m-%d')
+            else:
+                to_date_str = str(to_date)
+            
+            if isinstance(applied_date, str):
+                applied_date_str = applied_date
+            elif hasattr(applied_date, 'strftime'):
+                applied_date_str = applied_date.strftime('%Y-%m-%d')
+            else:
+                applied_date_str = str(applied_date)
+            
+            self.employee_leave_tree.insert("", "end", values=(
+                serial_number,
+                leave['leave_type'],
+                from_date_str,
+                to_date_str,
+                leave.get('reason', 'N/A'),
+                applied_date_str,
+                leave['status']
+            ), tags=(str(leave['_id']),))
+            serial_number += 1
     
     def refresh_leaves(self):
         """Refresh the leave list"""
