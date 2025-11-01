@@ -948,15 +948,28 @@ class MainWindow:
     def show_salaries(self):
         self.clear_content()
         
-        # Header with title
+        # Header with title and toggle button
         header_frame = ctk.CTkFrame(self.content_frame)
         header_frame.pack(pady=(20, 10), padx=20, fill="x")
         
         ctk.CTkLabel(
             header_frame,
-            text="💰 Add New Salary",
+            text="💰 Salary Management",
             font=ctk.CTkFont(size=24, weight="bold")
         ).pack(side="left", pady=15, padx=15)
+        
+        # Toggle button to switch between Add and View
+        toggle_btn = ctk.CTkButton(
+            header_frame,
+            text="📊 View Salary History",
+            command=self.show_salary_history,
+            height=40,
+            width=200,
+            font=ctk.CTkFont(size=14, weight="bold"),
+            fg_color="#1f6aa5",
+            hover_color="#164a73"
+        )
+        toggle_btn.pack(side="right", pady=15, padx=15)
         
         # Main form container
         form_container = ctk.CTkFrame(self.content_frame)
@@ -1352,6 +1365,540 @@ class MainWindow:
             self.net_salary_label.configure(text="$0.00")
         else:
             messagebox.showerror("Error", "Failed to add salary record")
+    
+    def show_salary_history(self):
+        """Show salary history viewer with filtering"""
+        self.clear_content()
+        
+        # Header with title and toggle button
+        header_frame = ctk.CTkFrame(self.content_frame)
+        header_frame.pack(pady=(20, 10), padx=20, fill="x")
+        
+        ctk.CTkLabel(
+            header_frame,
+            text="📊 Salary History",
+            font=ctk.CTkFont(size=24, weight="bold")
+        ).pack(side="left", pady=15, padx=15)
+        
+        # Toggle button to switch back to Add
+        toggle_btn = ctk.CTkButton(
+            header_frame,
+            text="➕ Add New Salary",
+            command=self.show_salaries,
+            height=40,
+            width=200,
+            font=ctk.CTkFont(size=14, weight="bold"),
+            fg_color="green",
+            hover_color="darkgreen"
+        )
+        toggle_btn.pack(side="right", pady=15, padx=15)
+        
+        # First filter row - Department and Employee
+        filter_frame1 = ctk.CTkFrame(self.content_frame)
+        filter_frame1.pack(pady=(0, 5), padx=20, fill="x")
+        
+        # Department selection
+        ctk.CTkLabel(
+            filter_frame1,
+            text="🏢 Department:",
+            font=ctk.CTkFont(size=12, weight="bold")
+        ).pack(side="left", padx=(15, 10), pady=10)
+        
+        # Get all departments
+        departments = self.db_service.get_all_departments()
+        dept_names = ["All Departments"] + [dept['name'] for dept in departments]
+        
+        self.history_dept_combo = ctk.CTkComboBox(
+            filter_frame1,
+            values=dept_names,
+            height=35,
+            width=200,
+            command=self.on_history_department_change
+        )
+        self.history_dept_combo.set("All Departments")
+        self.history_dept_combo.pack(side="left", padx=(0, 20), pady=10)
+        
+        # Employee selection for filtering
+        ctk.CTkLabel(
+            filter_frame1,
+            text="👤 Employee:",
+            font=ctk.CTkFont(size=12, weight="bold")
+        ).pack(side="left", padx=(15, 10), pady=10)
+        
+        # Get all employees
+        all_employees = self.db_service.get_all_employees()
+        self.all_employees_data = all_employees  # Store for filtering
+        emp_options = ["All Employees"] + [f"{emp['emp_id']} - {emp['name']}" for emp in all_employees]
+        
+        self.history_emp_combo = ctk.CTkComboBox(
+            filter_frame1,
+            values=emp_options,
+            height=35,
+            width=250
+        )
+        self.history_emp_combo.set("All Employees")
+        self.history_emp_combo.pack(side="left", padx=(0, 10), pady=10)
+        
+        # Second filter row - Date range
+        filter_frame2 = ctk.CTkFrame(self.content_frame)
+        filter_frame2.pack(pady=(0, 10), padx=20, fill="x")
+        
+        # Date range filter with calendar
+        ctk.CTkLabel(
+            filter_frame2,
+            text="📅 From:",
+            font=ctk.CTkFont(size=12, weight="bold")
+        ).pack(side="left", padx=(15, 5), pady=10)
+        
+        self.history_from_date = ctk.CTkEntry(
+            filter_frame2,
+            placeholder_text="YYYY-MM-DD",
+            height=35,
+            width=120
+        )
+        self.history_from_date.pack(side="left", padx=(0, 5), pady=10)
+        
+        # Calendar button for From date
+        ctk.CTkButton(
+            filter_frame2,
+            text="📅",
+            command=lambda: self.show_history_date_picker("from"),
+            height=35,
+            width=40
+        ).pack(side="left", padx=(0, 20), pady=10)
+        
+        ctk.CTkLabel(
+            filter_frame2,
+            text="To:",
+            font=ctk.CTkFont(size=12, weight="bold")
+        ).pack(side="left", padx=(5, 5), pady=10)
+        
+        self.history_to_date = ctk.CTkEntry(
+            filter_frame2,
+            placeholder_text="YYYY-MM-DD",
+            height=35,
+            width=120
+        )
+        self.history_to_date.pack(side="left", padx=(0, 5), pady=10)
+        
+        # Calendar button for To date
+        ctk.CTkButton(
+            filter_frame2,
+            text="📅",
+            command=lambda: self.show_history_date_picker("to"),
+            height=35,
+            width=40
+        ).pack(side="left", padx=(0, 20), pady=10)
+        
+        # Filter button
+        ctk.CTkButton(
+            filter_frame2,
+            text="🔍 Filter",
+            command=self.filter_salary_history,
+            height=35,
+            width=100
+        ).pack(side="left", padx=5, pady=10)
+        
+        # Clear filter button
+        ctk.CTkButton(
+            filter_frame2,
+            text="🔄 Clear",
+            command=self.clear_salary_filter,
+            height=35,
+            width=100,
+            fg_color="gray",
+            hover_color="darkgray"
+        ).pack(side="left", padx=5, pady=10)
+        
+        # Statistics frame
+        stats_frame = ctk.CTkFrame(self.content_frame)
+        stats_frame.pack(pady=10, padx=20, fill="x")
+        
+        # Statistics cards
+        stats_container = ctk.CTkFrame(stats_frame)
+        stats_container.pack(fill="x", padx=15, pady=15)
+        
+        # Total Paid card
+        paid_card = ctk.CTkFrame(stats_container, fg_color="#3b82f6", corner_radius=10)
+        paid_card.pack(side="left", fill="both", expand=True, padx=5)
+        
+        ctk.CTkLabel(
+            paid_card,
+            text="Total Basic Salary",
+            font=ctk.CTkFont(size=12),
+            text_color="white"
+        ).pack(pady=(10, 5))
+        
+        self.total_paid_label = ctk.CTkLabel(
+            paid_card,
+            text="$0.00",
+            font=ctk.CTkFont(size=20, weight="bold"),
+            text_color="white"
+        )
+        self.total_paid_label.pack(pady=(0, 10))
+        
+        # Total Allowances card
+        allowances_card = ctk.CTkFrame(stats_container, fg_color="#10b981", corner_radius=10)
+        allowances_card.pack(side="left", fill="both", expand=True, padx=5)
+        
+        ctk.CTkLabel(
+            allowances_card,
+            text="Total Allowances",
+            font=ctk.CTkFont(size=12),
+            text_color="white"
+        ).pack(pady=(10, 5))
+        
+        self.total_allowances_label = ctk.CTkLabel(
+            allowances_card,
+            text="$0.00",
+            font=ctk.CTkFont(size=20, weight="bold"),
+            text_color="white"
+        )
+        self.total_allowances_label.pack(pady=(0, 10))
+        
+        # Total Deductions card
+        deductions_card = ctk.CTkFrame(stats_container, fg_color="#ef4444", corner_radius=10)
+        deductions_card.pack(side="left", fill="both", expand=True, padx=5)
+        
+        ctk.CTkLabel(
+            deductions_card,
+            text="Total Deductions",
+            font=ctk.CTkFont(size=12),
+            text_color="white"
+        ).pack(pady=(10, 5))
+        
+        self.total_deductions_label = ctk.CTkLabel(
+            deductions_card,
+            text="$0.00",
+            font=ctk.CTkFont(size=20, weight="bold"),
+            text_color="white"
+        )
+        self.total_deductions_label.pack(pady=(0, 10))
+        
+        # Total Net Salary card
+        net_card = ctk.CTkFrame(stats_container, fg_color="#8b5cf6", corner_radius=10)
+        net_card.pack(side="left", fill="both", expand=True, padx=5)
+        
+        ctk.CTkLabel(
+            net_card,
+            text="Total Net Salary",
+            font=ctk.CTkFont(size=12),
+            text_color="white"
+        ).pack(pady=(10, 5))
+        
+        self.total_net_label = ctk.CTkLabel(
+            net_card,
+            text="$0.00",
+            font=ctk.CTkFont(size=20, weight="bold"),
+            text_color="white"
+        )
+        self.total_net_label.pack(pady=(0, 10))
+        
+        # Salary history table
+        table_frame = ctk.CTkFrame(self.content_frame)
+        table_frame.pack(pady=10, padx=20, fill="both", expand=True)
+        
+        # Create treeview for salary history
+        tree_frame = tk.Frame(table_frame, bg="#212121")
+        tree_frame.pack(fill="both", expand=True, padx=15, pady=15)
+        
+        columns = ("S No", "Emp ID", "Name", "Department", "Pay Date", "Basic Salary", "Allowances", "Deductions", "Net Salary")
+        self.salary_history_tree = ttk.Treeview(tree_frame, columns=columns, show="headings", height=12)
+        
+        # Configure columns
+        self.salary_history_tree.heading("S No", text="S No")
+        self.salary_history_tree.heading("Emp ID", text="Emp ID")
+        self.salary_history_tree.heading("Name", text="Name")
+        self.salary_history_tree.heading("Department", text="Department")
+        self.salary_history_tree.heading("Pay Date", text="Pay Date")
+        self.salary_history_tree.heading("Basic Salary", text="Basic Salary")
+        self.salary_history_tree.heading("Allowances", text="Allowances")
+        self.salary_history_tree.heading("Deductions", text="Deductions")
+        self.salary_history_tree.heading("Net Salary", text="Net Salary")
+        
+        # Column widths
+        self.salary_history_tree.column("S No", width=50, anchor="center")
+        self.salary_history_tree.column("Emp ID", width=70, anchor="center")
+        self.salary_history_tree.column("Name", width=130, anchor="w")
+        self.salary_history_tree.column("Department", width=100, anchor="w")
+        self.salary_history_tree.column("Pay Date", width=100, anchor="center")
+        self.salary_history_tree.column("Basic Salary", width=100, anchor="e")
+        self.salary_history_tree.column("Allowances", width=100, anchor="e")
+        self.salary_history_tree.column("Deductions", width=100, anchor="e")
+        self.salary_history_tree.column("Net Salary", width=100, anchor="e")
+        
+        # Scrollbar
+        scrollbar = ttk.Scrollbar(tree_frame, orient="vertical", command=self.salary_history_tree.yview)
+        self.salary_history_tree.configure(yscrollcommand=scrollbar.set)
+        
+        self.salary_history_tree.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        
+        # Load initial data
+        self.load_salary_history()
+    
+    def on_history_department_change(self, department):
+        """Update employee list when department changes in history view"""
+        if department == "All Departments":
+            # Show all employees
+            emp_options = ["All Employees"] + [f"{emp['emp_id']} - {emp['name']}" for emp in self.all_employees_data]
+        else:
+            # Filter employees by department
+            dept_employees = [emp for emp in self.all_employees_data if emp['department'] == department]
+            emp_options = ["All Employees"] + [f"{emp['emp_id']} - {emp['name']}" for emp in dept_employees]
+        
+        self.history_emp_combo.configure(values=emp_options)
+        self.history_emp_combo.set("All Employees")
+    
+    def show_history_date_picker(self, date_type):
+        """Show calendar picker for From or To date"""
+        try:
+            from tkcalendar import Calendar
+            from datetime import datetime
+        except ImportError:
+            messagebox.showerror("Error", "tkcalendar module not installed.\n\nPlease install it using:\npip install tkcalendar")
+            return
+        
+        # Create calendar dialog
+        dialog = ctk.CTkToplevel(self.root)
+        dialog.title(f"Select {'From' if date_type == 'from' else 'To'} Date")
+        dialog.geometry("350x420")
+        dialog.transient(self.root)
+        dialog.grab_set()
+        
+        # Center dialog
+        dialog.update_idletasks()
+        x = (dialog.winfo_screenwidth() // 2) - (350 // 2)
+        y = (dialog.winfo_screenheight() // 2) - (420 // 2)
+        dialog.geometry(f"350x420+{x}+{y}")
+        
+        # Title
+        ctk.CTkLabel(
+            dialog,
+            text=f"📅 Select {'From' if date_type == 'from' else 'To'} Date",
+            font=ctk.CTkFont(size=16, weight="bold")
+        ).pack(pady=15)
+        
+        # Calendar widget frame
+        cal_frame = tk.Frame(dialog, bg="#2b2b2b")
+        cal_frame.pack(pady=10, padx=20)
+        
+        # Get current date or existing date from entry
+        current_date = datetime.now()
+        if date_type == "from" and self.history_from_date.get():
+            try:
+                current_date = datetime.strptime(self.history_from_date.get(), '%Y-%m-%d')
+            except:
+                pass
+        elif date_type == "to" and self.history_to_date.get():
+            try:
+                current_date = datetime.strptime(self.history_to_date.get(), '%Y-%m-%d')
+            except:
+                pass
+        
+        # Create calendar with proper styling
+        cal = Calendar(
+            cal_frame,
+            selectmode='day',
+            year=current_date.year,
+            month=current_date.month,
+            day=current_date.day,
+            date_pattern='yyyy-mm-dd',  # Set output format
+            background='darkblue',
+            foreground='white',
+            borderwidth=2,
+            headersbackground='blue',
+            headersforeground='white',
+            selectbackground='green',
+            selectforeground='white',
+            normalbackground='white',
+            normalforeground='black',
+            weekendbackground='lightgray',
+            weekendforeground='black',
+            othermonthbackground='lightgray',
+            othermonthforeground='gray',
+            font=('Arial', 10)
+        )
+        cal.pack(padx=10, pady=10)
+        
+        # Buttons
+        btn_frame = ctk.CTkFrame(dialog)
+        btn_frame.pack(pady=15, padx=20, fill="x")
+        
+        def select_date():
+            try:
+                # Get selected date - it should be in yyyy-mm-dd format
+                selected_date = cal.get_date()
+                
+                # If not in correct format, try to parse and convert
+                if '/' in selected_date:
+                    # Try multiple date formats
+                    for fmt in ['%m/%d/%y', '%m/%d/%Y', '%d/%m/%y', '%d/%m/%Y']:
+                        try:
+                            date_obj = datetime.strptime(selected_date, fmt)
+                            selected_date = date_obj.strftime('%Y-%m-%d')
+                            break
+                        except:
+                            continue
+                
+                # Set the date in the appropriate entry field
+                if date_type == "from":
+                    self.history_from_date.delete(0, 'end')
+                    self.history_from_date.insert(0, selected_date)
+                else:
+                    self.history_to_date.delete(0, 'end')
+                    self.history_to_date.insert(0, selected_date)
+                
+                dialog.destroy()
+            except Exception as e:
+                print(f"Date selection error: {e}")
+                messagebox.showerror("Error", f"Failed to set date: {e}\n\nPlease enter date manually in YYYY-MM-DD format.")
+                dialog.destroy()
+        
+        ctk.CTkButton(
+            btn_frame,
+            text="✓ Select Date",
+            command=select_date,
+            height=40,
+            fg_color="green",
+            hover_color="darkgreen"
+        ).pack(side="left", fill="x", expand=True, padx=(0, 5))
+        
+        ctk.CTkButton(
+            btn_frame,
+            text="✕ Cancel",
+            command=dialog.destroy,
+            height=40,
+            fg_color="gray",
+            hover_color="darkgray"
+        ).pack(side="right", fill="x", expand=True, padx=(5, 0))
+    
+    def filter_salary_history(self, *args):
+        """Filter salary history based on selected criteria"""
+        self.load_salary_history()
+    
+    def clear_salary_filter(self):
+        """Clear all filters"""
+        self.history_dept_combo.set("All Departments")
+        self.history_emp_combo.set("All Employees")
+        self.history_from_date.delete(0, 'end')
+        self.history_to_date.delete(0, 'end')
+        # Reset employee list to all
+        self.on_history_department_change("All Departments")
+        self.load_salary_history()
+    
+    def load_salary_history(self):
+        """Load and display salary history"""
+        from datetime import datetime
+        
+        # Clear existing items
+        for item in self.salary_history_tree.get_children():
+            self.salary_history_tree.delete(item)
+        
+        # Get filter criteria
+        emp_selection = self.history_emp_combo.get()
+        from_date = self.history_from_date.get().strip()
+        to_date = self.history_to_date.get().strip()
+        
+        # Determine which employees to get data for
+        if emp_selection == "All Employees":
+            # Get salary records from all databases
+            salary_records = self.db_service.get_all_salary_records()
+        else:
+            # Extract employee ID from selection
+            try:
+                emp_id = int(emp_selection.split(" - ")[0])
+                salary_records = self.db_service.get_employee_salaries(emp_id)
+            except:
+                salary_records = []
+        
+        # Filter by date range
+        filtered_records = []
+        for record in salary_records:
+            pay_date = record.get('pay_date')
+            
+            # Convert to datetime if it's a string
+            if isinstance(pay_date, str):
+                try:
+                    pay_date = datetime.strptime(pay_date, '%Y-%m-%d')
+                except:
+                    continue
+            
+            # Apply date filters
+            include = True
+            if from_date:
+                try:
+                    from_date_obj = datetime.strptime(from_date, '%Y-%m-%d')
+                    if pay_date < from_date_obj:
+                        include = False
+                except:
+                    pass
+            
+            if to_date and include:
+                try:
+                    to_date_obj = datetime.strptime(to_date, '%Y-%m-%d')
+                    if pay_date > to_date_obj:
+                        include = False
+                except:
+                    pass
+            
+            if include:
+                filtered_records.append(record)
+        
+        # Calculate totals
+        total_basic = 0
+        total_allowances = 0
+        total_deductions = 0
+        total_net = 0
+        
+        # Display records
+        serial_number = 1
+        for record in filtered_records:
+            emp_id = record['emp_id']
+            employee = self.db_service.get_employee(emp_id)
+            emp_name = employee['name'] if employee else "Unknown"
+            department = employee['department'] if employee else "N/A"
+            
+            # Get salary details
+            basic_salary = record.get('base_salary', 0)
+            allowances = record.get('allowances', record.get('bonus', 0))
+            deductions = record.get('deductions', 0)
+            net_salary = record.get('net_salary', basic_salary + allowances - deductions)
+            
+            # Format pay date
+            pay_date = record.get('pay_date')
+            if isinstance(pay_date, str):
+                pay_date_str = pay_date
+            elif hasattr(pay_date, 'strftime'):
+                pay_date_str = pay_date.strftime('%Y-%m-%d')
+            else:
+                pay_date_str = "N/A"
+            
+            # Add to totals
+            total_basic += basic_salary
+            total_allowances += allowances
+            total_deductions += deductions
+            total_net += net_salary
+            
+            # Insert into tree
+            self.salary_history_tree.insert("", "end", values=(
+                serial_number,
+                emp_id,
+                emp_name,
+                department,
+                pay_date_str,
+                f"${basic_salary:,.2f}",
+                f"${allowances:,.2f}",
+                f"${deductions:,.2f}",
+                f"${net_salary:,.2f}"
+            ))
+            serial_number += 1
+        
+        # Update statistics
+        self.total_paid_label.configure(text=f"${total_basic:,.2f}")
+        self.total_allowances_label.configure(text=f"${total_allowances:,.2f}")
+        self.total_deductions_label.configure(text=f"${total_deductions:,.2f}")
+        self.total_net_label.configure(text=f"${total_net:,.2f}")
     
     def show_add_salary_dialog(self):
         dialog = SalaryDialog(self.root, self.db_service)

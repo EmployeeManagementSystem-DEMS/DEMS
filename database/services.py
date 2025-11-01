@@ -353,6 +353,19 @@ class DatabaseService:
             print(f"Error getting employee salaries: {e}")
             return []
     
+    def get_all_salary_records(self):
+        """Get all salary records from all databases"""
+        all_salaries = []
+        try:
+            for db in self.db_manager.get_all_databases():
+                salaries = list(db[DatabaseConfig.SALARIES_COLLECTION].find())
+                all_salaries.extend(salaries)
+            # Sort by pay date (most recent first)
+            return sorted(all_salaries, key=lambda x: x.get('pay_date', x.get('created_at', datetime.now())), reverse=True)
+        except Exception as e:
+            print(f"Error getting all salary records: {e}")
+            return []
+    
     # Statistics
     def get_dashboard_stats(self):
         """Get dashboard statistics"""
