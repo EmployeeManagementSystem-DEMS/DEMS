@@ -294,19 +294,19 @@ Employee in ems_db3 → Leaves in ems_db3
 ### Data Distribution Example
 
 ```
-Employee ID: 450 (John Doe)
+Employee ID: 450 (Md Abu Rayhan)
 ├── Employee Record → ems_db1
 ├── User Account → Replicated in all DBs
 ├── Leave Records → ems_db1 (derived)
 └── Salary Records → ems_db1 (derived)
 
-Employee ID: 1500 (Jane Smith)
+Employee ID: 1500 (Md. Ibrahim)
 ├── Employee Record → ems_db2
 ├── User Account → Replicated in all DBs
 ├── Leave Records → ems_db2 (derived)
 └── Salary Records → ems_db2 (derived)
 
-Employee ID: 2750 (Bob Wilson)
+Employee ID: 2750 (Md. Jubaer)
 ├── Employee Record → ems_db3
 ├── User Account → Replicated in all DBs
 ├── Leave Records → ems_db3 (derived)
